@@ -4,13 +4,14 @@
 
 #define MAX_USERS 100
 #define MAX_PRODUCTS 100
-#define MAX_HISTORY 100
 
-// User structure
-typedef struct history{
+// History structure
+typedef struct history {
     int id;
     struct history *next;
-}hist;
+} hist;
+
+// User structure
 typedef struct {
     int userID;
     char name[100];
@@ -25,10 +26,10 @@ typedef struct {
     float price;
 } Product;
 
-// Function to add a new user
+// Add a new user
 void addUser(User users[], int *userCount, char *name) {
     if (*userCount < MAX_USERS) {
-        users[*userCount].userID=(*userCount+1);
+        users[*userCount].userID = (*userCount + 1);
         strcpy(users[*userCount].name, name);
         users[*userCount].purhist = NULL;
         users[*userCount].browsehist = NULL;
@@ -38,10 +39,10 @@ void addUser(User users[], int *userCount, char *name) {
     }
 }
 
-// Function to add a new product
+// Add a new product
 void addProduct(Product products[], int *productCount, char *productName, float price) {
     if (*productCount < MAX_PRODUCTS) {
-        products[*productCount].productID = (*productCount)+1;
+        products[*productCount].productID = (*productCount + 1);
         strcpy(products[*productCount].productName, productName);
         products[*productCount].price = price;
         (*productCount)++;
@@ -50,238 +51,215 @@ void addProduct(Product products[], int *productCount, char *productName, float 
     }
 }
 
-// Function to track browsing history
-void trackBrowsingHistory(User *users, int productID) {
-    if(users->browsehist==NULL)
-    {
-        hist *nn=(hist*)malloc(sizeof(hist));
-        users->browsehist=nn;
-        nn->id=productID;
-        nn->next=NULL;
-        return;
+// Track browsing history
+void trackBrowsingHistory(User *user, int productID) {
+    hist *nn = (hist *)malloc(sizeof(hist));
+    nn->id = productID;
+    nn->next = NULL;
+
+    if (user->browsehist == NULL) {
+        user->browsehist = nn;
+    } else {
+        hist *temp = user->browsehist;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = nn;
     }
-    hist *temp;
-    temp=users->browsehist;
-    while(temp->next!=NULL)
-    {
-        temp=temp->next;
-    }
-    hist *nn=(hist*)malloc(sizeof(hist));
-    temp->next=nn;
-    nn->id=productID;
-    nn->next=NULL;
 }
 
-// Function to track purchase history
+// Track purchase history
 void trackPurchaseHistory(User *user, int productID) {
-    if(user->purhist==NULL)
-    {
-        hist *nn=(hist*)malloc(sizeof(hist));
-        user->purhist=nn;
-        nn->id=productID;
-        nn->next=NULL;
-        return;
+    hist *nn = (hist *)malloc(sizeof(hist));
+    nn->id = productID;
+    nn->next = NULL;
+
+    if (user->purhist == NULL) {
+        user->purhist = nn;
+    } else {
+        hist *temp = user->purhist;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = nn;
     }
-    hist *temp;
-    temp=user->purhist;
-    while(temp->next!=NULL)
-    {
-        temp=temp->next;
-    }
-    hist *nn=(hist*)malloc(sizeof(hist));
-    temp->next=nn;
-    nn->id=productID;
-    nn->next=NULL;
 }
 
-int max(int arr[])
-{
-    int pos=0;
-    int max=0;
-    for(int i=0;i<MAX_PRODUCTS;i++)
-    {
-        if(arr[i]>max)
-        {
-            pos=i;
-            max=arr[i];
+// Find max index in array and reset that value to 0
+int max(int arr[]) {
+    int pos = -1;
+    int maximum = -1;
+    for (int i = 0; i < MAX_PRODUCTS; i++) {
+        if (arr[i] > maximum) {
+            pos = i;
+            maximum = arr[i];
         }
     }
-    arr[pos]=0;
+    if (pos != -1)
+        arr[pos] = 0;
     return pos;
 }
 
-int isEmpty(int arr[])
-{
-    for(int i=0;i<MAX_PRODUCTS;i++)
-    {
-        if(arr[i]!=0)
-        {
+// Check if all elements are zero
+int isEmpty(int arr[]) {
+    for (int i = 0; i < MAX_PRODUCTS; i++) {
+        if (arr[i] != 0) {
             return 0;
         }
     }
     return 1;
 }
 
-// Function to generate recommendations based on browsing history
+// Generate recommendations
 void generateRecommendations(User *user, Product products[], int productCount) {
     printf("Recommendations for %s:\n", user->name);
-    int rec[MAX_PRODUCTS];
-    for(int i=0;i<MAX_PRODUCTS;i++)
-    {
-        rec[i]=0;
-    }
-    hist *temp1,*temp2;
-    temp1=user->browsehist;
-    temp2=user->purhist;
-    // each time a product is browsed, its recommendation likelyhood increases by 1
-    while(temp1!=NULL)
-    {
-        int productID = temp1->id;
+    int rec[MAX_PRODUCTS] = {0};
+
+    hist *temp = user->browsehist;
+    while (temp != NULL) {
+        int pid = temp->id;
         for (int j = 0; j < productCount; j++) {
-            if (products[j].productID == productID) {
-                rec[j]+=1;
+            if (products[j].productID == pid) {
+                rec[j]++;
                 break;
             }
         }
-        temp1=temp1->next;
+        temp = temp->next;
     }
-    // each time a product is purchased, its recommendation likelyhood increases by 1
-    while(temp2!=NULL)
-    {
-        int productID = temp2->id;
+
+    temp = user->purhist;
+    while (temp != NULL) {
+        int pid = temp->id;
         for (int j = 0; j < productCount; j++) {
-            if (products[j].productID == productID) {
-                rec[j]+=1;
+            if (products[j].productID == pid) {
+                rec[j]++;
                 break;
             }
         }
-        temp2=temp2->next;
+        temp = temp->next;
     }
-    //arranging the final recommendation list based on likelyhood
-    // Arranging the final recommendation list based on likelihood
-    int count = 0; // Counter to limit to 3 recommendations
-    for (int i = 0; i < MAX_PRODUCTS; i++) {
-        if (count >= 3) { // Stop after 3 recommendations
-            break;
+
+    int count = 0;
+    while (count < 3 && !isEmpty(rec)) {
+        int index = max(rec);
+        if (index != -1 && index < productCount) {
+            printf("%d, %s\n", products[index].productID, products[index].productName);
+            count++;
         }
-    
-    int x = max(rec);
-    printf("%d, %s\n", products[x].productID, products[x].productName);
-
-    count++; // Increment the counter
-
-    if (isEmpty(rec)) { // Break if no more recommendations are available
-        break;
     }
 }
 
-}
-// Function to display user data
+// Display user data
 void displayUserData(User *user) {
-    printf("User ID: %d\n", user->userID);  // Corrected from %s to %d for userID
+    printf("User ID: %d\n", user->userID);
     printf("Name: %s\n", user->name);
+
     printf("Purchase History: ");
-    
-    hist *temp2 = user->purhist;
-    if (temp2 == NULL) {
-        printf("No purchases yet.\n");
-    } else {
-        while (temp2 != NULL) {
-            printf("%d ", temp2->id);
-            temp2 = temp2->next;
+    hist *temp = user->purhist;
+    if (temp == NULL)
+        printf("No purchases yet.");
+    else {
+        while (temp != NULL) {
+            printf("%d ", temp->id);
+            temp = temp->next;
         }
     }
     printf("\n");
 
     printf("Browse History: ");
-    hist *temp1 = user->browsehist;
-    if (temp1 == NULL) {
-        printf("No browsing history yet.\n");
-    } else {
-        while (temp1 != NULL) {
-            printf("%d ", temp1->id);
-            temp1 = temp1->next;
+    temp = user->browsehist;
+    if (temp == NULL)
+        printf("No browsing history yet.");
+    else {
+        while (temp != NULL) {
+            printf("%d ", temp->id);
+            temp = temp->next;
         }
     }
     printf("\n");
 }
 
-
 // Main function
 int main() {
-    // Initialize the arrays for users and products
     User users[MAX_USERS];
     Product products[MAX_PRODUCTS];
-    
-    int userCount = 0;
-    int productCount = 0;
+    int userCount = 0, productCount = 0;
     int m;
-    char name[50];
+    char name[100];
     int userID;
     int productID;
-    while(1)
-    {
-        printf("enter choice:\n1.add user\n2.add product\n3.browse product\n4.purchase product\n5.display user details\n6.generate recommendations for user\n7.exit: ");
-        scanf("%d",&m);
-        switch(m)
-        {
-            case(1):
-            {
-                printf("enter username:");
-                scanf("%s",&name);
-                addUser(users,&userCount,&name);
+    float price;
+
+    while (1) {
+        printf("\nMenu:\n");
+        printf("1. Add user\n2. Add product\n3. Browse product\n4. Purchase product\n5. Display user details\n6. Generate recommendations\n7. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d", &m);
+
+        switch (m) {
+            case 1:
+                printf("Enter username: ");
+                scanf("%s", name);
+                addUser(users, &userCount, name);
                 break;
-            }
+
             case 2:
-            {
-                printf("enter product name:");
-                scanf("%s",&name);
-                addUser(products,&productCount,&name);
+                printf("Enter product name: ");
+                scanf("%s", name);
+                printf("Enter price: ");
+                scanf("%f", &price);
+                addProduct(products, &productCount, name, price);
                 break;
-            }
-            case(3):
-            {
-                printf("enter userID: ");
-                scanf("%d",&userID);
-                printf("enter productID: ");
-                scanf("%d",&productID);
-                trackBrowsingHistory(&(users[userID]),productID);
+
+            case 3:
+                printf("Enter userID: ");
+                scanf("%d", &userID);
+                printf("Enter productID: ");
+                scanf("%d", &productID);
+                if (userID > 0 && userID <= userCount)
+                    trackBrowsingHistory(&users[userID - 1], productID);
+                else
+                    printf("Invalid userID!\n");
                 break;
-            }
-            case(4):
-            {
-                printf("enter userID: ");
-                scanf("%d",&userID);
-                printf("enter productID: ");
-                scanf("%d",&productID);
-                trackPurchaseHistory(&(users[userID]),productID);
+
+            case 4:
+                printf("Enter userID: ");
+                scanf("%d", &userID);
+                printf("Enter productID: ");
+                scanf("%d", &productID);
+                if (userID > 0 && userID <= userCount)
+                    trackPurchaseHistory(&users[userID - 1], productID);
+                else
+                    printf("Invalid userID!\n");
                 break;
-            }
-            case(5):
-            {
-                printf("enter userID: ");
-                scanf("%d",&userID);
-                displayUserData(&(users[userID]));
+
+            case 5:
+                printf("Enter userID: ");
+                scanf("%d", &userID);
+                if (userID > 0 && userID <= userCount)
+                    displayUserData(&users[userID - 1]);
+                else
+                    printf("Invalid userID!\n");
                 break;
-            }
-            case(6):
-            {
-                printf("enter userID: ");
-                scanf("%d",&userID);
-                generateRecommendations(&(users[userID]),products,productCount);
+
+            case 6:
+                printf("Enter userID: ");
+                scanf("%d", &userID);
+                if (userID > 0 && userID <= userCount)
+                    generateRecommendations(&users[userID - 1], products, productCount);
+                else
+                    printf("Invalid userID!\n");
                 break;
-            }
-            case(7):
-            {
+
+            case 7:
                 exit(0);
                 break;
-            }
+
             default:
-            {
-                printf("incorrect input");
-                exit(1);
-            }
+                printf("Invalid input!\n");
+                break;
         }
     }
+
     return 0;
 }
